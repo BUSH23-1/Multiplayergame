@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --ink-darkest: #0a0d0c;
+    --ink-dark: #101514;
+    --ink-card: #151c1a;
+    --ink-card-hover: #1c2522;
+    --ink-border: #26332d;
+    --ink-border-light: #364840;
+    
+    --olive-accent: #7e8f47;
+    --olive-light: #9db259;
+    --olive-bright: #b7ce67;
+    --olive-dim: #546030;
+    --olive-glow: rgba(126, 143, 71, 0.28);
+    
+    --cream-pure: #faf7f0;
+    --cream-main: #f4f1ea;
+    --cream-dim: #ded8ca;
+    --cream-muted: #a39e91;
+  }
+
+  body {
+    background-color: #0e1312;
+    color: #f4f1ea;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+
+  .font-display {
+    font-family: 'Cinzel', serif;
+  }
+
+  .font-mono-code {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Custom subtle scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #101514;
+}
+::-webkit-scrollbar-thumb {
+  background: #2b3933;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #7e8f47;
+}
+
+/* Radial background glow */
+.arena-bg-grid {
+  background-image: 
+    radial-gradient(ellipse at 50% 0%, rgba(126, 143, 71, 0.12) 0%, transparent 60%),
+    radial-gradient(circle at 10% 20%, rgba(38, 51, 45, 0.4) 0%, transparent 40%),
+    linear-gradient(to bottom, #0e1312 0%, #090c0b 100%);
+}
+
+.subtle-grid {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(126, 143, 71, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(126, 143, 71, 0.04) 1px, transparent 1px);
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Tic-Tac-Toe Arena — Real-Time Multiplayer Game",
+  "description": "Full-stack real-time multiplayer Tic-Tac-Toe arena with Java 17 Spring Boot STOMP WebSocket architecture, olive & ink aesthetic, and live interactive play.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

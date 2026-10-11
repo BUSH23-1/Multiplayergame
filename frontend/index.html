@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tic-Tac-Toe Arena — Real-Time Multiplayer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <!-- SockJS and STOMP Client from CDN for Vanilla JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+  <!-- Ambient background glow elements -->
+  <div class="glow-orb orb-top"></div>
+  <div class="glow-orb orb-bottom"></div>
+
+  <!-- Header / Navigation -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-crest">⚔️</div>
+      <div>
+        <h1 class="brand-title">TIC-TAC-TOE ARENA</h1>
+        <p class="brand-subtitle">Authoritative Spring Boot STOMP Engine</p>
+      </div>
+    </div>
+    
+    <div class="header-actions">
+      <!-- Backend connection status indicator -->
+      <div id="connectionStatus" class="connection-badge status-disconnected">
+        <span class="status-dot"></span>
+        <span id="connectionStatusText">Offline</span>
+      </div>
+      <button id="configToggleBtn" class="btn btn-ghost" title="Backend Server Settings">
+        ⚙️ Settings
+      </button>
+    </div>
+  </header>
+
+  <!-- Server Config Modal / Drawer (Allows user to point to Render or Localhost) -->
+  <div id="configModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Backend Configuration</h3>
+        <button id="closeConfigBtn" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted">Enter your deployed Spring Boot URL or leave default for local testing:</p>
+        <div class="form-group">
+          <label for="backendUrlInput">Backend URL (REST & WebSocket):</label>
+          <input type="text" id="backendUrlInput" placeholder="http://localhost:8080 or https://your-app.onrender.com" />
+          <small class="helper-text">Supports localhost:8080 or your live Render backend URL.</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="saveConfigBtn" class="btn btn-primary">Save & Reconnect</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main View Container -->
+  <main class="main-container">
+
+    <!-- 1. WELCOME SCREEN -->
+    <section id="welcomeView" class="view-panel active">
+      <div class="hero-card">
+        <div class="hero-badge">ONLINE MULTIPLAYER ARENA</div>
+        <h2 class="hero-title">Grandmaster Tic-Tac-Toe</h2>
+        <p class="hero-description">
+          A real-time competitive battle arena powered by Java 17, Spring Boot STOMP WebSockets, and server-authoritative validation.
+        </p>
+
+        <!-- Player Nickname Input -->
+        <div class="player-name-box">
+          <label for="usernameInput">Your Gladiator Name</label>
+          <div class="input-with-icon">
+            <span class="input-icon">🛡️</span>
+            <input type="text" id="usernameInput" placeholder="Enter nickname (e.g., Maximus)" maxlength="16" />
+          </div>
+        </div>
+
+        <!-- Action Choices -->
+        <div class="action-grid">
+          <div class="action-card">
+            <div class="action-icon">🏛️</div>
+            <h3>Create a Room</h3>
+            <p>Generate a unique 6-character room code and wait for a challenger.</p>
+            <button id="createRoomBtn" class="btn btn-primary btn-large">
+              <span>Create Match Room</span>
+              <span class="btn-arrow">&rarr;</span>
+            </button>
+          </div>
+
+          <div class="action-card">
+            <div class="action-icon">⚔️</div>
+            <h3>Join Existing Match</h3>
+            <p>Enter a room code shared by a friend to step onto the battlefield.</p>
+            <div class="join-input-group">
+              <input type="text" id="roomCodeInput" placeholder="ROOM CODE" maxlength="6" class="code-input" />
+              <button id="joinRoomBtn" class="btn btn-olive btn-large">
+                <span>Join Game</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="features-pill-row">
+          <span class="feature-tag">✓ WebSocket Real-Time Sync</span>
+          <span class="feature-tag">✓ Server-Side Win Validation</span>
+          <span class="feature-tag">✓ Auto Role Assignment (X / O)</span>
+          <span class="feature-tag">✓ Rematch System</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. LOBBY WAITING SCREEN -->
+    <section id="waitingView" class="view-panel hidden">
+      <div class="waiting-card">
+        <div class="pulsing-shield">🛡️</div>
+        <h2>Arena Chamber Created</h2>
+        <p class="text-muted">Share your room code with a friend to begin the duel.</p>
+
+        <div class="room-code-display">
+          <span class="room-code-label">ROOM CODE:</span>
+          <span id="displayRoomCode" class="room-code-value">------</span>
+          <button id="copyCodeBtn" class="btn btn-copy" title="Copy code">
+            📋 Copy
+          </button>
+        </div>
+
+        <div class="waiting-indicator">
+          <div class="dot-flashing"></div>
+          <span>Waiting for Challenger to join...</span>
+        </div>
+
+        <div class="waiting-players">
+          <div class="player-slot slot-filled">
+            <div class="slot-symbol symbol-x">X</div>
+            <div class="slot-info">
+              <strong id="waitingHostName">You</strong>
+              <small class="slot-role">Host & First Mover</small>
+            </div>
+            <span class="status-pill status-ready">Ready</span>
+          </div>
+
+          <div class="player-slot slot-empty">
+            <div class="slot-symbol symbol-o">O</div>
+            <div class="slot-info">
+              <strong>Awaiting Challenger...</strong>
+              <small class="slot-role">Player 2</small>
+            </div>
+            <span class="status-pill status-waiting">Waiting</span>
+          </div>
+        </div>
+
+        <div class="waiting-actions">
+          <button id="cancelRoomBtn" class="btn btn-ghost">Cancel & Leave</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. GAMEPLAY ARENA SCREEN -->
+    <section id="gameView" class="view-panel hidden">
+      <!-- Top Match Bar -->
+      <div class="match-bar">
+        <div class="match-meta">
+          <span class="meta-label">ROOM:</span>
+          <strong id="gameRoomCode" class="meta-code">------</strong>
+          <button id="gameCopyBtn" class="btn-micro" title="Copy Room Code">📋</button>
+        </div>
+
+        <!-- Central Turn Banner -->
+        <div id="turnBanner" class="turn-banner turn-x">
+          <span id="turnIndicatorIcon" class="turn-symbol">X</span>
+          <span id="turnBannerText">Turn: Player 1 (X)</span>
+        </div>
+
+        <button id="leaveGameBtn" class="btn btn-ghost btn-sm">Leave Match</button>
+      </div>
+
+      <!-- Duelists Cards -->
+      <div class="duelists-grid">
+        <!-- Player X Card -->
+        <div id="cardPlayerX" class="duelist-card active-turn">
+          <div class="duelist-badge badge-x">X</div>
+          <div class="duelist-details">
+            <h4 id="namePlayerX">Player 1</h4>
+            <span id="rolePlayerX" class="duelist-sub">You (X)</span>
+          </div>
+          <div class="duelist-status">
+            <span id="indicatorPlayerX" class="online-indicator"></span>
+            <span id="rematchStatusX" class="rematch-tag hidden">Rematch Ready</span>
+          </div>
+        </div>
+
+        <div class="vs-divider">VS</div>
+
+        <!-- Player O Card -->
+        <div id="cardPlayerO" class="duelist-card">
+          <div class="duelist-badge badge-o">O</div>
+          <div class="duelist-details">
+            <h4 id="namePlayerO">Player 2</h4>
+            <span id="rolePlayerO" class="duelist-sub">Opponent (O)</span>
+          </div>
+          <div class="duelist-status">
+            <span id="indicatorPlayerO" class="online-indicator"></span>
+            <span id="rematchStatusO" class="rematch-tag hidden">Rematch Ready</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Notice Bar -->
+      <div id="statusNotice" class="status-notice">
+        Match in progress. Click an open cell to claim your position.
+      </div>
+
+      <!-- 3x3 Centered Responsive Board -->
+      <div class="board-wrapper">
+        <div class="board-grid" id="boardGrid">
+          <!-- 9 Interactive Cells -->
+          <button class="cell" data-index="0" aria-label="Cell 0"></button>
+          <button class="cell" data-index="1" aria-label="Cell 1"></button>
+          <button class="cell" data-index="2" aria-label="Cell 2"></button>
+          <button class="cell" data-index="3" aria-label="Cell 3"></button>
+          <button class="cell" data-index="4" aria-label="Cell 4"></button>
+          <button class="cell" data-index="5" aria-label="Cell 5"></button>
+          <button class="cell" data-index="6" aria-label="Cell 6"></button>
+          <button class="cell" data-index="7" aria-label="Cell 7"></button>
+          <button class="cell" data-index="8" aria-label="Cell 8"></button>
+        </div>
+
+        <!-- Winning Strike Line Canvas/Overlay -->
+        <div id="strikeLine" class="strike-line hidden"></div>
+      </div>
+
+      <!-- Game End Banner (Overlay or Below Board) -->
+      <div id="gameResultCard" class="result-card hidden">
+        <div id="resultIcon" class="result-icon">🏆</div>
+        <h3 id="resultTitle">Victory Achieved!</h3>
+        <p id="resultSubtitle">Player 1 conquered the grid with 3 in a row.</p>
+        <div class="result-actions">
+          <button id="rematchBtn" class="btn btn-primary btn-large">
+            <span>Request Rematch</span>
+          </button>
+          <button id="returnHomeBtn" class="btn btn-ghost btn-large">
+            Return to Arena Hall
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Audio Sound Effects (Synthesized using Web Audio API in app.js) -->
+  <script src="app.js"></script>
+</body>
+</html>
